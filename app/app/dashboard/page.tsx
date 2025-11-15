@@ -5,7 +5,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth, useToys } from '@/lib/hooks';
+import { useAuth, useToys, useSwipes, useMatches } from '@/lib/hooks';
 import { Button } from '@/components/ui';
 import { SwipeCard } from '@/components/swipe';
 import Link from 'next/link';
@@ -14,20 +14,38 @@ import { useSwipeStore } from '@/lib/stores';
 export default function DashboardPage() {
   const { user } = useAuth();
   const { browseToys, isBrowseLoading } = useToys(user?.id);
+  const { recordSwipe } = useSwipes(user?.id);
+  const { matches } = useMatches(user?.id);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [showMatchModal, setShowMatchModal] = useState(false);
   const { dailySwipeCount, incrementSwipeCount } = useSwipeStore();
 
   const MAX_DAILY_SWIPES = 50;
   const swipesRemaining = MAX_DAILY_SWIPES - dailySwipeCount;
 
-  const handleSwipe = (direction: 'left' | 'right') => {
-    if (direction === 'right') {
-      incrementSwipeCount();
-      // TODO: Record swipe in database
-      console.log('Swiped right on:', browseToys?.[currentIndex]?.title);
-    } else {
-      // TODO: Record pass in database
-      console.log('Passed on:', browseToys?.[currentIndex]?.title);
+  const handleSwipe = async (direction: 'left' | 'right') => {
+    const currentToy = browseToys?.[currentIndex];
+    if (!currentToy || !user) return;
+
+    try {
+      if (direction === 'right') {
+        incrementSwipeCount();
+      }
+
+      // Record swipe in database
+      const result = await recordSwipe.mutateAsync({
+        toyId: currentToy.id,
+        toyOwnerId: currentToy.user_id,
+        direction,
+      });
+
+      // Show match modal if new match created
+      if (result.match) {
+        setShowMatchModal(true);
+        setTimeout(() => setShowMatchModal(false), 3000);
+      }
+    } catch (error) {
+      console.error('Error recording swipe:', error);
     }
 
     // Move to next toy
@@ -59,11 +77,11 @@ export default function DashboardPage() {
           <div className="text-xs text-gray-600">Left Today</div>
         </div>
         <div className="bg-white rounded-lg p-3 border border-gray-200 text-center">
-          <div className="text-xl font-bold text-green-600">0</div>
+          <div className="text-xl font-bold text-green-600">{matches?.length || 0}</div>
           <div className="text-xs text-gray-600">Matches</div>
         </div>
         <div className="bg-white rounded-lg p-3 border border-gray-200 text-center">
-          <div className="text-xl font-bold text-purple-600">0</div>
+          <div className="text-xl font-bold text-purple-600">{user?.completed_swaps_count || 0}</div>
           <div className="text-xs text-gray-600">Swaps</div>
         </div>
       </div>
@@ -143,6 +161,22 @@ export default function DashboardPage() {
             </Link>
             <Link href="/dashboard/matches">
               <Button variant="outline" className="w-full">View Matches</Button>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Match Modal */}
+      {showMatchModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center animate-bounce">
+            <div className="text-6xl mb-4">🎉</div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">It's a Match!</h2>
+            <p className="text-gray-600 mb-6">
+              You both liked each other's toys! Check your matches to start swapping.
+            </p>
+            <Link href="/dashboard/matches">
+              <Button className="w-full">View Matches</Button>
             </Link>
           </div>
         </div>
