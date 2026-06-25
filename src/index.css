@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #FF2D55;
+  --color-secondary: #FFB800;
+  --color-bg: #FFF9F5;
+  --color-card: #FFFFFF;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { height: 100%; width: 100%; background: #FFF9F5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+body { overscroll-behavior: none; }
